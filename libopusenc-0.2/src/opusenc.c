@@ -1101,6 +1101,30 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       *value = enc->header.nb_coupled;
     }
     break;
+#ifdef OPUS_SET_QEXT_REQUEST
+    case OPUS_SET_QEXT_REQUEST:
+    {
+      opus_int32 value = va_arg(ap, opus_int32);
+      /* Forward QEXT setting to the multistream encoder */
+      if (enc->st.ms) {
+        ret = opus_multistream_encoder_ctl(enc->st.ms, OPUS_SET_QEXT(value));
+      } else {
+        ret = OPE_UNIMPLEMENTED;
+      }
+    }
+    break;
+    case OPUS_GET_QEXT_REQUEST:
+    {
+      opus_int32 *value = va_arg(ap, opus_int32*);
+      /* Get QEXT setting from the multistream encoder */
+      if (enc->st.ms) {
+        ret = opus_multistream_encoder_ctl(enc->st.ms, OPUS_GET_QEXT(value));
+      } else {
+        ret = OPE_UNIMPLEMENTED;
+      }
+    }
+    break;
+#endif
     default:
       ret = OPUS_UNIMPLEMENTED;
   }
