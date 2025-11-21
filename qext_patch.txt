@@ -1,0 +1,43 @@
+QEXT Support Patch for opusenc
+================================
+
+This patch adds --qext command line option to enable QEXT (scalable quality extension) 
+for encoding frequencies above 20kHz.
+
+Instructions:
+1. Apply the changes below to opus-tools-0.2/src/opusenc.c
+2. Rebuild the project
+
+Changes needed:
+---------------
+
+1. Add enable_qext variable declaration (around line 432, after "int no_phase_inv=0;"):
+   
+   int enable_qext=0;
+
+2. Add --qext to long_options array (search for "static struct option long_options[]"):
+   
+   Add this line before the {0,0,0,0} terminator:
+   {"qext",no_argument,NULL,0},
+
+3. Add --qext to usage() function (around line 149, in encoding options section):
+   
+   printf(" --qext             Enable QEXT for frequencies above 20kHz\n");
+
+4. Add --qext handling in command line parsing (around line 575, after no_phase_inv handling):
+   
+   } else if (strcmp(optname, "qext")==0) {
+     enable_qext=1;
+
+5. Add OPUS_SET_QEXT call after encoder creation (around line 942, after OPUS_SET_LSB_DEPTH):
+   
+   #ifdef ENABLE_QEXT
+   if (enable_qext) {
+     ret = ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
+     if (ret != OPE_OK) {
+       fprintf(stderr, "Warning: OPUS_SET_QEXT failed: %s\n", ope_strerror(ret));
+     }
+   }
+   #endif
+
+Note: The exact line numbers may vary slightly depending on the version.
