@@ -32,16 +32,8 @@ if(WIN32)
 endif()
 
 # ============ 1. libogg ============
-set(OGG_SOURCES
-    libogg-1.3.6/src/bitwise.c
-    libogg-1.3.6/src/framing.c
-)
-add_library(ogg STATIC ${OGG_SOURCES})
-target_include_directories(ogg PUBLIC 
-    ${CMAKE_CURRENT_SOURCE_DIR}/libogg-1.3.6/include
-)
-
-# 生成 ogg/config_types.h
+# 生成 ogg/config_types.h（必须在 add_library 之前）
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/ogg)
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/ogg/config_types.h
 "#ifndef _OGG_CONFIG_TYPES_H
 #define _OGG_CONFIG_TYPES_H
@@ -54,7 +46,16 @@ typedef int64_t ogg_int64_t;
 typedef uint64_t ogg_uint64_t;
 #endif
 ")
-target_include_directories(ogg PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/ogg)
+
+set(OGG_SOURCES
+    libogg-1.3.6/src/bitwise.c
+    libogg-1.3.6/src/framing.c
+)
+add_library(ogg STATIC ${OGG_SOURCES})
+target_include_directories(ogg PUBLIC 
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/libogg-1.3.6/include
+)
 
 # ============ 2. opus（启用 QEXT） ============
 # 检查 opus-main 是否有 CMakeLists.txt
@@ -85,10 +86,8 @@ set(OPUSENC_SOURCES
     libopusenc-0.2/src/opusenc.c
     libopusenc-0.2/src/picture.c
     libopusenc-0.2/src/resample.c
+    libopusenc-0.2/src/unicode_support.c
 )
-if(WIN32)
-    list(APPEND OPUSENC_SOURCES libopusenc-0.2/src/unicode_support.c)
-endif()
 add_library(opusenc STATIC ${OPUSENC_SOURCES})
 target_include_directories(opusenc PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/libopusenc-0.2/include
@@ -122,10 +121,12 @@ if(WIN32)
         win32_compat/getopt.c
         win32_compat/opus_compat.c
     )
-    set(OPUSFILE_STUB_SOURCES
-        win32_compat/opusfile_stub.c
-    )
 endif()
+
+# opusfile stub (needed on all platforms when HTTP is disabled)
+set(OPUSFILE_STUB_SOURCES
+    win32_compat/opusfile_stub.c
+)
 
 # opusenc 可执行文件
 # Note: picture.c is NOT included here because libopusenc provides picture functions
