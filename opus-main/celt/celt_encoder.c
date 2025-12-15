@@ -2523,9 +2523,23 @@ int celt_encode_with_ec(CELTEncoder * OPUS_RESTRICT st, const opus_res * pcm, in
 #ifdef ENABLE_QEXT
    if (st->enable_qext) {
       int new_compressedBytes;
-      /* Don't give any bits for the first 80 kb/s per channel. Then 80% of the excess. */
+      /* Don't give any bits for the first 80 kb/s per channel. Then a fraction of the excess. */
       opus_int32 offset = bitrate_to_bits(C*80000, mode->Fs, frame_size)/8;
+#ifdef QEXT_ADAPTIVE_BITRATE
+      /* Adaptive allocation: 48kHz (qext_scale=1) has only 2 extra bands, so allocate less.
+       * 96kHz (qext_scale=2) has 14 extra bands, keep original 80% allocation.
+       * Formula: 48kHz -> ~25% (1/4), 96kHz -> 80% (4/5)
+       * This only affects encoder bitrate decision, not bitstream format - fully compatible. */
+      if (qext_scale == 1) {
+         /* 48kHz: 25% of excess for QEXT (2 bands + base enhancement) */
+         qext_bytes = IMAX(nbCompressedBytes-1275, IMAX(0, (nbCompressedBytes-offset)/4));
+      } else {
+         /* 96kHz: 80% of excess for QEXT (14 bands + base enhancement) */
+         qext_bytes = IMAX(nbCompressedBytes-1275, IMAX(0, (nbCompressedBytes-offset)*4/5));
+      }
+#else
       qext_bytes = IMAX(nbCompressedBytes-1275, IMAX(0, (nbCompressedBytes-offset)*4/5));
+#endif
       if (qext_bytes > 20) {
          opus_int32 target;
          opus_val16 scale;

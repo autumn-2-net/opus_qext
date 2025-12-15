@@ -25,6 +25,13 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # 启用 QEXT 支持
 add_definitions(-DENABLE_QEXT)
 
+# QEXT 自适应码率分配 (48kHz时减少QEXT比特分配，因为只有2个扩展频段)
+option(QEXT_ADAPTIVE_BITRATE "Adaptive QEXT bitrate allocation based on sample rate" ON)
+if(QEXT_ADAPTIVE_BITRATE)
+    add_definitions(-DQEXT_ADAPTIVE_BITRATE)
+    message(STATUS "QEXT Adaptive Bitrate: ENABLED (48kHz will use less QEXT bits)")
+endif()
+
 # 平台特定设置
 if(WIN32)
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
@@ -218,6 +225,11 @@ install(TARGETS opusenc_exe opusdec_exe
 message(STATUS "==============================================")
 message(STATUS "Opus All-in-One Build Configuration Complete")
 message(STATUS "QEXT: ENABLED")
+if(QEXT_ADAPTIVE_BITRATE)
+    message(STATUS "QEXT Adaptive Bitrate: ON (48kHz=25%, 96kHz=80%)")
+else()
+    message(STATUS "QEXT Adaptive Bitrate: OFF (always 80%)")
+endif()
 message(STATUS "Targets: opusenc, opusdec")
 message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "==============================================")
