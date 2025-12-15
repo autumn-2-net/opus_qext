@@ -137,7 +137,7 @@ static void usage(void)
   printf(" --help-picture     Show help on attaching album art\n");
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
-  printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
+  printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel, up to 512 with --qext)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -907,12 +907,17 @@ int main(int argc, char **argv)
              (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
   }
 
-  if (bitrate>(1024000*chan)||bitrate<500) {
-    fatal("Error: bitrate %d bits/sec is insane\n%s"
-      "--bitrate values from 6 to 256 kbit/s per channel are meaningful.\n",
-      bitrate, bitrate>=1000000 ? "Did you mistake bits for kilobits?\n" : "");
+  {
+    /* QEXT mode supports up to ~1530 kbps (3825 bytes * 8 * 50 fps), we allow 512k/channel */
+    int max_bitrate_per_chan = enable_qext ? 512000 : 256000;
+    if (bitrate>(2*max_bitrate_per_chan*chan)||bitrate<500) {
+      fatal("Error: bitrate %d bits/sec is insane\n%s"
+        "--bitrate values from 6 to %d kbit/s per channel are meaningful.\n",
+        bitrate, bitrate>=1000000 ? "Did you mistake bits for kilobits?\n" : "",
+        max_bitrate_per_chan/1000);
+    }
+    bitrate=IMIN(chan*max_bitrate_per_chan,bitrate);
   }
-  bitrate=IMIN(chan*256000,bitrate);
 
   ret = ope_encoder_ctl(enc, OPUS_SET_BITRATE(bitrate));
   if (ret != OPE_OK) {
