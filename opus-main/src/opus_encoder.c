@@ -2805,8 +2805,13 @@ int opus_encoder_ctl(OpusEncoder *st, int request, ...)
                     goto bad_arg;
                 else if (value <= 500)
                     value = 500;
+#ifdef ENABLE_QEXT
+                else if (value > (opus_int32)(st->enable_qext ? 2048000 : 750000)*st->channels)
+                    value = (opus_int32)(st->enable_qext ? 2048000 : 750000)*st->channels;
+#else
                 else if (value > (opus_int32)750000*st->channels)
                     value = (opus_int32)750000*st->channels;
+#endif
             }
             st->user_bitrate_bps = value;
         }

@@ -137,7 +137,7 @@ static void usage(void)
   printf(" --help-picture     Show help on attaching album art\n");
   printf(" --quiet            Enable quiet mode\n");
   printf("\nEncoding options:\n");
-  printf(" --bitrate n.nnn    Set target bitrate in kbit/s (6-256/channel)\n");
+  printf(" --bitrate n          Set target bitrate in kbit/s (6-2048 per channel)\n");
   printf(" --vbr              Use variable bitrate encoding (default)\n");
   printf(" --cvbr             Use constrained variable bitrate encoding\n");
   printf(" --hard-cbr         Use hard constant bitrate encoding\n");
@@ -907,12 +907,12 @@ int main(int argc, char **argv)
              (IMIN(48,IMAX(8,((rate<44100?rate:48000)+1000)/1000))+16)+32)>>6;
   }
 
-  if (bitrate>(1024000*chan)||bitrate<500) {
+  if (bitrate>(2048000*chan)||bitrate<500) {
     fatal("Error: bitrate %d bits/sec is insane\n%s"
-      "--bitrate values from 6 to 256 kbit/s per channel are meaningful.\n",
-      bitrate, bitrate>=1000000 ? "Did you mistake bits for kilobits?\n" : "");
+      "--bitrate values from 6 to 2048 kbit/s per channel are meaningful.\n",
+      bitrate, bitrate>=2048000 ? "Did you mistake bits for kilobits?\n" : "");
   }
-  bitrate=IMIN(chan*256000,bitrate);
+  bitrate=IMIN(chan*2048000,bitrate);
 
   ret = ope_encoder_ctl(enc, OPUS_SET_BITRATE(bitrate));
   if (ret != OPE_OK) {
@@ -953,6 +953,11 @@ int main(int argc, char **argv)
     ret = ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
     if (ret != OPE_OK) {
       fprintf(stderr, "Warning: OPUS_SET_QEXT failed: %s\n", ope_strerror(ret));
+    }
+    /* Force CELT-only mode to guarantee QEXT path activation */
+    ret = ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
+    if (ret != OPE_OK) {
+      fprintf(stderr, "Warning: OPUS_SET_FORCE_MODE failed: %s\n", ope_strerror(ret));
     }
   }
 #endif

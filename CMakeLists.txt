@@ -210,15 +210,65 @@ if(WIN32)
     target_link_libraries(opusdec_exe PRIVATE ws2_32 winmm)
 endif()
 
-# 安装规则
-install(TARGETS opusenc_exe opusdec_exe
-    RUNTIME DESTINATION bin
+# ============ 6. opus_qext_api 共享库 ============
+set(OPUS_QEXT_API_SOURCES
+    opus_qext_api.c
+    opus-tools-0.2/src/audio-in.c
+    opus-tools-0.2/src/wav_io.c
+    opus-tools-0.2/src/diag_range.c
+    opus-tools-0.2/src/opus_header.c
+    opus-tools-0.2/src/resample.c
+    opus-tools-0.2/src/flac.c
+    ${WIN32_COMPAT_SOURCES}
+    ${OPUSFILE_STUB_SOURCES}
 )
+if(WIN32)
+    list(APPEND OPUS_QEXT_API_SOURCES opus-tools-0.2/win32/unicode_support.c)
+endif()
+
+add_library(opus_qext_api SHARED ${OPUS_QEXT_API_SOURCES})
+target_include_directories(opus_qext_api PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/opus-tools-0.2/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/opus-tools-0.2/win32
+    ${CMAKE_CURRENT_SOURCE_DIR}/win32_compat
+)
+target_link_libraries(opus_qext_api PRIVATE opusenc opusfile opus ogg)
+target_compile_definitions(opus_qext_api PRIVATE
+    OPUS_QEXT_BUILD
+    HAVE_STDINT_H=1
+    PACKAGE_VERSION="0.2-qext"
+    PACKAGE_NAME="opus-tools"
+    OUTSIDE_SPEEX
+    RANDOM_PREFIX=opusqext
+    RESAMPLE_FULL_SINC_TABLE
+    OP_DISABLE_HTTP
+)
+# Force include opus_check.h for __opus_check_* macros
+if(MSVC)
+    target_compile_options(opus_qext_api PRIVATE /FI${CMAKE_CURRENT_SOURCE_DIR}/win32_compat/opus_check.h)
+else()
+    target_compile_options(opus_qext_api PRIVATE -include ${CMAKE_CURRENT_SOURCE_DIR}/win32_compat/opus_check.h)
+endif()
+if(UNIX)
+    target_link_libraries(opus_qext_api PRIVATE m)
+endif()
+if(WIN32)
+    target_link_libraries(opus_qext_api PRIVATE ws2_32)
+endif()
+
+# 安装规则
+install(TARGETS opusenc_exe opusdec_exe opus_qext_api
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
+install(FILES opus_qext_api.h DESTINATION include)
 
 message(STATUS "==============================================")
 message(STATUS "Opus All-in-One Build Configuration Complete")
 message(STATUS "QEXT: ENABLED")
-message(STATUS "Targets: opusenc, opusdec")
+message(STATUS "Targets: opusenc, opusdec, opus_qext_api")
 message(STATUS "Platform: ${CMAKE_SYSTEM_NAME}")
 message(STATUS "==============================================")
 

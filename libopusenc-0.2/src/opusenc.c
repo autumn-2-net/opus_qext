@@ -932,6 +932,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 #ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
     case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
 #endif
+    case 11002: /* OPUS_SET_FORCE_MODE_REQUEST */
     {
       opus_int32 value = va_arg(ap, opus_int32);
       ret = opeint_encoder_ctl2(&enc->st, request, value);
