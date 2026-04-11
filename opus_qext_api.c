@@ -496,7 +496,11 @@ static int decode_core(OggOpusFile *st, DynBuf *pcm_out,
 
     head = op_head(st, 0);
 
-    /* Determine output rate */
+    /* Determine output rate.
+       Default to the original input sample rate stored in the Opus header.
+       The decode-side resampler uses Q10 + cutoff_override=1.0 which
+       preserves content all the way to the output Nyquist frequency.
+       If the header has no rate (0), fall back to 48kHz. */
     rate = params->output_rate;
     if (rate == 0) {
         rate = head->input_sample_rate;
@@ -572,12 +576,15 @@ static int decode_core(OggOpusFile *st, DynBuf *pcm_out,
 
         if (rate != 48000 && !resampler) {
             int err;
-            resampler = speex_resampler_init(channels, 48000, rate, 5, &err);
+            resampler = speex_resampler_init(channels, 48000, rate, 10, &err);
             if (err != 0) {
                 free(output);
                 return OPUS_QEXT_ERR_INTERNAL;
             }
             speex_resampler_skip_zeros(resampler);
+            /* Override cutoff to 1.0 to preserve QEXT HF content
+               through downsampling (same fix as encode side) */
+            speex_resampler_set_cutoff(resampler, 1.0f);
         }
 
         outsamp = decode_audio_write(output, channels, nb_read, pcm_out,

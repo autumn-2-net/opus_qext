@@ -76,6 +76,7 @@
 #define speex_resampler_skip_zeros CAT_PREFIX(RANDOM_PREFIX,_resampler_skip_zeros)
 #define speex_resampler_reset_mem CAT_PREFIX(RANDOM_PREFIX,_resampler_reset_mem)
 #define speex_resampler_strerror CAT_PREFIX(RANDOM_PREFIX,_resampler_strerror)
+#define speex_resampler_set_cutoff CAT_PREFIX(RANDOM_PREFIX,_resampler_set_cutoff)
 
 #define spx_int16_t short
 #define spx_int32_t int
@@ -335,6 +336,12 @@ int speex_resampler_reset_mem(SpeexResamplerState *st);
  * @return English string
  */
 const char *speex_resampler_strerror(int err);
+
+/** Override the resampler's internal cutoff frequency.
+ * @param st Resampler state
+ * @param cutoff Normalised cutoff frequency (0.0 to 1.0)
+ */
+int speex_resampler_set_cutoff(SpeexResamplerState *st, float cutoff);
 
 #ifdef __cplusplus
 }
