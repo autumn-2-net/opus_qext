@@ -901,6 +901,21 @@ int main(int argc, char **argv)
     fatal("Error: OPE_GET_NB_COUPLED_STREAMS failed: %s\n", ope_strerror(ret));
   }
 
+  /* QEXT + FORCE_MODE — must be set BEFORE bitrate so the raised cap takes effect */
+#ifdef ENABLE_QEXT
+  if (enable_qext) {
+    ret = ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
+    if (ret != OPE_OK) {
+      fprintf(stderr, "Warning: OPUS_SET_QEXT failed: %s\n", ope_strerror(ret));
+    }
+    /* Force CELT-only mode to guarantee QEXT path activation */
+    ret = ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
+    if (ret != OPE_OK) {
+      fprintf(stderr, "Warning: OPUS_SET_FORCE_MODE failed: %s\n", ope_strerror(ret));
+    }
+  }
+#endif
+
   if (bitrate<0) {
     /*Lower default rate for sampling rates [8000-44100) by a factor of (rate+16k)/(64k)*/
     bitrate=((64000*data.nb_streams+32000*data.nb_coupled)*
@@ -946,19 +961,6 @@ int main(int argc, char **argv)
   ret = ope_encoder_ctl(enc, OPUS_SET_LSB_DEPTH(IMAX(8,IMIN(24,inopt.samplesize))));
   if (ret != OPE_OK) {
     fprintf(stderr, "Warning: OPUS_SET_LSB_DEPTH failed: %s\n", ope_strerror(ret));
-  }
-#endif
-#ifdef ENABLE_QEXT
-  if (enable_qext) {
-    ret = ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
-    if (ret != OPE_OK) {
-      fprintf(stderr, "Warning: OPUS_SET_QEXT failed: %s\n", ope_strerror(ret));
-    }
-    /* Force CELT-only mode to guarantee QEXT path activation */
-    ret = ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
-    if (ret != OPE_OK) {
-      fprintf(stderr, "Warning: OPUS_SET_FORCE_MODE failed: %s\n", ope_strerror(ret));
-    }
   }
 #endif
   if (no_phase_inv) {

@@ -733,7 +733,11 @@ static void surround_rate_allocation(
       bitrate = nb_normal*(channel_offset + Fs + 10000) + 8000*nb_lfe;
    } else if (st->bitrate_bps==OPUS_BITRATE_MAX)
    {
+#ifdef ENABLE_QEXT
+      bitrate = nb_normal*2048000 + nb_lfe*128000;
+#else
       bitrate = nb_normal*300000 + nb_lfe*128000;
+#endif
    } else {
       bitrate = st->bitrate_bps;
    }
@@ -1160,7 +1164,11 @@ int opus_multistream_encoder_ctl_va_list(OpusMSEncoder *st, int request,
       {
          if (value <= 0)
             goto bad_arg;
+#ifdef ENABLE_QEXT
+         value = IMIN(2048000*st->layout.nb_channels, IMAX(500*st->layout.nb_channels, value));
+#else
          value = IMIN(300000*st->layout.nb_channels, IMAX(500*st->layout.nb_channels, value));
+#endif
       }
       st->bitrate_bps = value;
    }
