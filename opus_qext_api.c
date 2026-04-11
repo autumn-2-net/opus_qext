@@ -293,6 +293,15 @@ static int encode_core(FILE *fin, const char *in_path,
     ope_encoder_ctl(enc, OPE_GET_NB_STREAMS(&data->nb_streams));
     ope_encoder_ctl(enc, OPE_GET_NB_COUPLED_STREAMS(&data->nb_coupled));
 
+    /* QEXT + FORCE_MODE — must be set BEFORE bitrate so the raised cap takes effect */
+#ifdef ENABLE_QEXT
+    if (params->enable_qext) {
+        ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
+        /* Force CELT-only mode to guarantee QEXT path activation */
+        ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
+    }
+#endif
+
     /* Bitrate */
     if (bitrate < 0) {
         bitrate = ((64000 * data->nb_streams + 32000 * data->nb_coupled) *
@@ -336,15 +345,6 @@ static int encode_core(FILE *fin, const char *in_path,
 
 #ifdef OPUS_SET_LSB_DEPTH
     ope_encoder_ctl(enc, OPUS_SET_LSB_DEPTH(IMAX(8, IMIN(24, inopt.samplesize))));
-#endif
-
-    /* QEXT + FORCE_MODE */
-#ifdef ENABLE_QEXT
-    if (params->enable_qext) {
-        ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
-        /* Force CELT-only mode to guarantee QEXT path activation */
-        ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
-    }
 #endif
 
     if (params->no_phase_inv) {
@@ -847,6 +847,14 @@ OPUS_QEXT_EXPORT int opus_qext_encode_pcm(const float *pcm,
     ope_encoder_ctl(enc, OPE_GET_NB_STREAMS(&data.nb_streams));
     ope_encoder_ctl(enc, OPE_GET_NB_COUPLED_STREAMS(&data.nb_coupled));
 
+    /* QEXT + FORCE_MODE — must be set BEFORE bitrate so the raised cap takes effect */
+#ifdef ENABLE_QEXT
+    if (params->enable_qext) {
+        ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
+        ope_encoder_ctl(enc, 11002 /* OPUS_SET_FORCE_MODE_REQUEST */, 1002 /* MODE_CELT_ONLY */);
+    }
+#endif
+
     bitrate = params->bitrate;
     if (bitrate < 0) {
         bitrate = ((64000 * data.nb_streams + 32000 * data.nb_coupled) *
@@ -876,13 +884,6 @@ OPUS_QEXT_EXPORT int opus_qext_encode_pcm(const float *pcm,
         ope_encoder_ctl(enc, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
 
     ope_encoder_ctl(enc, OPUS_SET_COMPLEXITY(params->complexity >= 0 ? params->complexity : 10));
-
-#ifdef ENABLE_QEXT
-    if (params->enable_qext) {
-        ope_encoder_ctl(enc, OPUS_SET_QEXT(1));
-        ope_encoder_ctl(enc, 11002, 1002);
-    }
-#endif
 
     if (params->no_phase_inv) {
 #ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
