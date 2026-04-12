@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opus-qext"
+dynamic = ["version"]
+description = "Python bindings for Opus encoder/decoder with QEXT quality extensions"
+readme = "README_PYPI.md"
+license = {text = "BSD-3-Clause"}
+requires-python = ">=3.8"
+dependencies = [
+    "cffi>=1.15",
+]
+
+[project.optional-dependencies]
+numpy = ["numpy>=1.20"]
+torch = ["numpy>=1.20", "torch>=1.9"]
+all = ["numpy>=1.20", "torch>=1.9"]
+
+[tool.setuptools]
+packages = ["opus_qext"]
+package-dir = {"opus_qext" = "python"}
+
+[tool.setuptools.package-data]
+opus_qext = ["*.dll", "*.so", "*.dylib"]
+
+[tool.setuptools.exclude-package-data]
+opus_qext = ["test_*.py", "__pycache__/**"]
+
+[tool.setuptools.dynamic]
+version = {attr = "opus_qext._version.__version__"}

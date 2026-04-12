@@ -9,6 +9,7 @@ Modules:
     opus_torch  - PyTorch tensor I/O (optional)
 """
 
+from ._version import __version__ as __version__
 from .opus_cffi_def import ffi, load_lib
 
 # Load DLL once at import time
@@ -22,8 +23,6 @@ from .opus_codec import (
     encode_pcm,
     decode_to_pcm,
 )
-
-__version__ = ffi.string(_lib.opus_qext_get_version()).decode("utf-8")
 
 __all__ = [
     "encode_file",
