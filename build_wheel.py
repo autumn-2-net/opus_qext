@@ -45,8 +45,13 @@ def get_platform_tag():
 
 
 def get_python_tag():
-    """Get python version tag like cp310."""
-    return f"cp{sys.version_info.major}{sys.version_info.minor}"
+    """Get python version tag.
+
+    CFFI ABI mode (ffi.dlopen) loads the DLL at runtime without compiled
+    extensions, so the wheel is compatible with any Python 3.x version.
+    Use 'py3' instead of 'cp310' etc.
+    """
+    return "py3"
 
 
 def build_wheel():
