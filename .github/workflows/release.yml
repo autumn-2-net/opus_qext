@@ -120,8 +120,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ inputs.tag }}" \
-            --title "${{ inputs.tag }}" \
+          TAG=$(echo "${{ inputs.tag }}" | xargs)
+          echo "Creating release with tag: $TAG"
+          gh release create "$TAG" \
+            --title "$TAG" \
             --notes "Automated release from CI build" \
             --generate-notes \
             release/*
