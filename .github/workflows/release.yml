@@ -25,6 +25,7 @@ jobs:
         run: cmake --build build --config Release
 
       - name: Copy DLL to python package
+        shell: cmd
         run: copy /Y build\Release\opus_qext_api.dll python\
 
       - name: Set up Python
@@ -95,48 +96,9 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
-  # ── macOS ──
-  build-macos:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure CMake
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: cmake --build build -j$(sysctl -n hw.ncpu)
-
-      - name: Copy shared library to python package
-        run: cp build/libopus_qext_api.dylib python/
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install cffi
-        run: pip install cffi
-
-      - name: Build wheel
-        run: python build_wheel.py
-
-      - name: Package CLI artifacts
-        run: |
-          cp build/opusenc dist/
-          cp build/opusdec dist/
-          cp build/libopus_qext_api.dylib dist/
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: artifacts-macos
-          path: dist/*
-          if-no-files-found: error
-
   # ── Publish release ──
   publish-release:
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
