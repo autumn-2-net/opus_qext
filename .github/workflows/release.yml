@@ -1,0 +1,165 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.4.6.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Windows ──
+  build-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Copy DLL to python package
+        run: copy /Y build\Release\opus_qext_api.dll python\
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install cffi
+        run: pip install cffi
+
+      - name: Build wheel
+        run: python build_wheel.py
+
+      - name: Package CLI artifacts
+        shell: pwsh
+        run: |
+          $artifacts = "build/Release/opusenc.exe", "build/Release/opusdec.exe", "build/Release/opus_qext_api.dll"
+          foreach ($f in $artifacts) {
+            if (Test-Path $f) { Copy-Item $f -Destination "dist/" }
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-windows
+          path: dist/*
+          if-no-files-found: error
+
+  # ── Linux ──
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential cmake
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Copy shared library to python package
+        run: cp build/libopus_qext_api.so python/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install cffi
+        run: pip install cffi
+
+      - name: Build wheel
+        run: python build_wheel.py
+
+      - name: Package CLI artifacts
+        run: |
+          cp build/opusenc dist/
+          cp build/opusdec dist/
+          cp build/libopus_qext_api.so dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux
+          path: dist/*
+          if-no-files-found: error
+
+  # ── macOS ──
+  build-macos:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Copy shared library to python package
+        run: cp build/libopus_qext_api.dylib python/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install cffi
+        run: pip install cffi
+
+      - name: Build wheel
+        run: python build_wheel.py
+
+      - name: Package CLI artifacts
+        run: |
+          cp build/opusenc dist/
+          cp build/opusdec dist/
+          cp build/libopus_qext_api.dylib dist/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-macos
+          path: dist/*
+          if-no-files-found: error
+
+  # ── Publish release ──
+  publish-release:
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-artifacts
+
+      - name: Organize release files
+        run: |
+          mkdir -p release
+          # Flatten all artifacts into release/
+          find all-artifacts -type f -exec cp {} release/ \;
+          # List for debugging
+          ls -lh release/
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ inputs.tag }}" \
+            --title "${{ inputs.tag }}" \
+            --notes "Automated release from CI build" \
+            --generate-notes \
+            release/*
