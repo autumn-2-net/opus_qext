@@ -2429,6 +2429,11 @@ static opus_int32 opus_encode_frame_native(OpusEncoder *st, const opus_res *pcm,
     data[-1] = 0;
     if (st->mode != MODE_SILK_ONLY)
     {
+#ifdef ENABLE_QEXT
+        /* Set QEXT on CELT encoder BEFORE bitrate, so the raised cap (2048k) takes effect */
+        if (st->mode == MODE_CELT_ONLY)
+            celt_encoder_ctl(celt_enc, OPUS_SET_QEXT(st->enable_qext));
+#endif
         celt_encoder_ctl(celt_enc, OPUS_SET_VBR(st->use_vbr));
         if (st->mode == MODE_HYBRID)
         {
@@ -2805,8 +2810,13 @@ int opus_encoder_ctl(OpusEncoder *st, int request, ...)
                     goto bad_arg;
                 else if (value <= 500)
                     value = 500;
+#ifdef ENABLE_QEXT
+                else if (value > (opus_int32)(st->enable_qext ? 2048000 : 750000)*st->channels)
+                    value = (opus_int32)(st->enable_qext ? 2048000 : 750000)*st->channels;
+#else
                 else if (value > (opus_int32)750000*st->channels)
                     value = (opus_int32)750000*st->channels;
+#endif
             }
             st->user_bitrate_bps = value;
         }

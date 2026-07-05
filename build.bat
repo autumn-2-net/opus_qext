@@ -37,8 +37,18 @@ echo.
 echo Executables are in: build\Release\
 echo   - opusenc.exe
 echo   - opusdec.exe
+echo   - opus_qext_api.dll
 echo.
 echo Quick test:
 echo   build\Release\opusenc.exe --help
+echo.
+
+REM Copy DLL to python package directory
+if exist python (
+    echo Copying opus_qext_api.dll to python package...
+    copy /Y build\Release\opus_qext_api.dll python\ >nul 2>&1
+    copy /Y build\Release\opus_qext_api.lib python\ >nul 2>&1
+    echo Done.
+)
 echo.
 pause

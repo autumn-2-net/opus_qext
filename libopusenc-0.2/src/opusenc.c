@@ -932,6 +932,7 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
 #ifdef OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST
     case OPUS_SET_PHASE_INVERSION_DISABLED_REQUEST:
 #endif
+    case 11002: /* OPUS_SET_FORCE_MODE_REQUEST */
     {
       opus_int32 value = va_arg(ap, opus_int32);
       ret = opeint_encoder_ctl2(&enc->st, request, value);
@@ -1108,6 +1109,14 @@ int ope_encoder_ctl(OggOpusEnc *enc, int request, ...) {
       /* Forward QEXT setting to the multistream encoder */
       if (enc->st.ms) {
         ret = opus_multistream_encoder_ctl(enc->st.ms, OPUS_SET_QEXT(value));
+        /* When QEXT is enabled and resampling is active (input != 48kHz),
+           use max quality resampler with cutoff=1.0 to preserve content
+           all the way up to the input Nyquist (e.g. 22050Hz for 44.1kHz).
+           Default quality 5 with cutoff 0.922 rolls off above ~20kHz. */
+        if (value && enc->re) {
+          speex_resampler_set_quality(enc->re, 10);
+          speex_resampler_set_cutoff(enc->re, 1.0f);
+        }
       } else {
         ret = OPE_UNIMPLEMENTED;
       }

@@ -2992,7 +2992,11 @@ int opus_custom_encoder_ctl(CELTEncoder * OPUS_RESTRICT st, int request, ...)
          opus_int32 value = va_arg(ap, opus_int32);
          if (value<=500 && value!=OPUS_BITRATE_MAX)
             goto bad_arg;
+#ifdef ENABLE_QEXT
+         value = IMIN(value, (st->enable_qext ? 2048000 : 750000)*st->channels);
+#else
          value = IMIN(value, 750000*st->channels);
+#endif
          st->bitrate = value;
       }
       break;

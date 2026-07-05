@@ -127,6 +127,7 @@ struct SpeexResamplerState_ {
    int          int_advance;
    int          frac_advance;
    float  cutoff;
+   float  cutoff_override;
    spx_uint32_t oversample;
    int          initialised;
    int          started;
@@ -618,7 +619,9 @@ static int update_filter(SpeexResamplerState *st)
    if (st->num_rate > st->den_rate)
    {
       /* down-sampling */
-      st->cutoff = quality_map[st->quality].downsample_bandwidth * st->den_rate / st->num_rate;
+      st->cutoff = (st->cutoff_override > 0.f)
+                   ? st->cutoff_override * st->den_rate / st->num_rate
+                   : quality_map[st->quality].downsample_bandwidth * st->den_rate / st->num_rate;
       if (multiply_frac(&st->filt_len,st->filt_len,st->num_rate,st->den_rate) != RESAMPLER_ERR_SUCCESS)
          goto fail;
       /* Round up to make sure we have a multiple of 8 for SSE */
@@ -635,7 +638,8 @@ static int update_filter(SpeexResamplerState *st)
          st->oversample = 1;
    } else {
       /* up-sampling */
-      st->cutoff = quality_map[st->quality].upsample_bandwidth;
+      st->cutoff = (st->cutoff_override > 0.f) ? st->cutoff_override
+                                                : quality_map[st->quality].upsample_bandwidth;
    }
 
 #ifdef RESAMPLE_FULL_SINC_TABLE
@@ -828,6 +832,7 @@ EXPORT SpeexResamplerState *speex_resampler_init_frac(spx_uint32_t nb_channels, 
    st->resampler_ptr = 0;
 
    st->cutoff = 1.f;
+   st->cutoff_override = 0.f;
    st->nb_channels = nb_channels;
    st->in_stride = 1;
    st->out_stride = 1;
@@ -1236,4 +1241,15 @@ EXPORT const char *speex_resampler_strerror(int err)
       default:
          return "Unknown error. Bad error code or strange version mismatch.";
    }
+}
+
+EXPORT int speex_resampler_set_cutoff(SpeexResamplerState *st, float cutoff)
+{
+   if (!st || cutoff <= 0.f || cutoff > 1.f)
+      return RESAMPLER_ERR_INVALID_ARG;
+   st->cutoff_override = cutoff;
+   st->cutoff = cutoff;
+   if (st->initialised)
+      return update_filter(st);
+   return RESAMPLER_ERR_SUCCESS;
 }
